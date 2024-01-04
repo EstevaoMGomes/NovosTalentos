@@ -148,7 +148,7 @@ from simsopt.field import Current, Coil
 from simsopt.geo import CurveXYZFourier
 curve = CurveXYZFourier(100, 1)
 curve.x = [0, 0, 1., 0., 1., 0., 0., 0., 0.]
-np.testing.assert_allclose(curve.gamma(),np.array(coil_points))
+jnp.allclose(curve.gamma(),np.array(coil_points))
 coil = Coil(curve, Current(current))
 field = BiotSavart([coil])  # Multiple coils can be included in the list
 field.set_points(np.array([observation_point]))
