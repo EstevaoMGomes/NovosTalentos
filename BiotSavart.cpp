@@ -159,10 +159,14 @@ int main(void){
     { 1.98228725e+00,  0.00000000e+00, -1.87381315e-01},
     { 1.99211470e+00,  0.00000000e+00, -1.25333234e-01},
     { 1.99802673e+00,  0.00000000e+00, -6.27905195e-02}};
-    vector<vector<double>> wire2 = {{0,0,-100},{0,0,100}};
+    vector<vector<double>> wire2 = {{1,0,0},
+                                    {0.30901699,0.95105652,0},
+                                    {-0.80901699,0.58778525,0},
+                                    {-0.80901699,-0.58778525,0},
+                                    {0.30901699,-0.95105652,0}};
     vector<vector<double>> r = {{1,0,0}};
-    vector<vector<double>> r2 = {{1,0,1}};
-    double I = 1;
+    vector<vector<double>> r2 = {{0.5,0.5,0.1}};
+    double I = 1e4;
     auto start = chrono::high_resolution_clock::now();
     vector<vector<double>> MagneticFields = BiotSavart(wire2,r2,I);
     auto stop = chrono::high_resolution_clock::now();
