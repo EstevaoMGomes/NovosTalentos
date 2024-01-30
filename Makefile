@@ -1,6 +1,6 @@
 ### definitions
 
-CXX = g++ -std=c++20 # $(shell root-config --cflags) -I src -I ~/eigen-3.4.0
+CXX = g++-13 -std=c++20 # $(shell root-config --cflags) -I src -I ~/eigen-3.4.0
 #ROOT_INC = -I $(shell root-config --incdir)
 #ROOT_LIB = $(shell root-config --libs)
 
