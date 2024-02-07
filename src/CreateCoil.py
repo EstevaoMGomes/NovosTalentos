@@ -3,9 +3,9 @@ import pandas as pd
 from jax import jit
 
 
-def CreateCoil(FourierCoefficients: list[int | float], NumberOfPoints: int, Period: float) -> CurveXYZFourier:
-    # Creating a curve with "NumberOfPoints" points and "Period" periods
-    curve = CurveXYZFourier(NumberOfPoints, Period)
+def CreateCoil(FourierCoefficients: list[int | float], NumberOfPoints: int, order: float) -> CurveXYZFourier:
+    # Creating a curve with "NumberOfPoints" points and "order" number of Fourier coefficients
+    curve = CurveXYZFourier(NumberOfPoints, order=order)
     # Setting the Fourier coefficients
     curve.x = FourierCoefficients
    
