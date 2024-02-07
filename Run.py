@@ -9,7 +9,7 @@ import numpy as np
 from time import time
 
 from src.Dynamics import GuidingCenter
-from src.MagneticField import B
+from src.MagneticField import B, B_Norm
 from src.CreateCoil import CreateCoil
 from src.Plotter import plotter
 
@@ -17,11 +17,11 @@ from src.Plotter import plotter
 # Inputs
 #------------------------------------------------------------------------#
 
-N_particles = 5
+N_particles = 1
 FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.], [1., 0., 0., 0., 1., 0., 0., 0., 1.]]
 #FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.]]
 N_coils = len(FourierCoefficients)
-N_CurvePoints = 1000000
+N_CurvePoints = 10000
 FC_order = 1
 currents = [1e7, -1e7]
 #currents = [1e7]
@@ -48,12 +48,12 @@ def initial_conditions(N_particles: int) -> jnp.ndarray:
     vpar = vth*pitch
     vperp = vth*jnp.sqrt(1-pitch**2)
 
-    #x = jnp.array([-0.7])
-    #y = jnp.array([ 0.3])
-    #z = jnp.array([ 0.3])
-    x = jnp.array([-0.7,-0.4, -0.5,  0.5,  0.5])
-    y = jnp.array([ 0.3,-0.3,  0.5, -0.5,  0.5])
-    z = jnp.array([ 0.3,-0.3,  0.5,  0.5, -0.5])
+    x = jnp.array([-0.7])
+    y = jnp.array([ 0.3])
+    z = jnp.array([ 0.3])
+    #x = jnp.array([-0.7,-0.4, -0.5,  0.5,  0.5])
+    #y = jnp.array([ 0.3,-0.3,  0.5, -0.5,  0.5])
+    #z = jnp.array([ 0.3,-0.3,  0.5,  0.5, -0.5])
 
     return jnp.array((x, y, z, vpar, vperp))
 
@@ -133,12 +133,31 @@ for i in range(N_particles):
     print(f"Guiding Center for particle {i+1}:\n Dx: {Dx}\n Dy: {Dy}\n Dz: {Dz}\n Dvpar: {Dvpar}\nTook {(time2 - time1):.1e}s")
     print("------------------------------------------------------------------------")
 
-timesteps = 20
+timesteps = 10
 time1 = time()
 trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, 1e-7, timesteps), currents, curves_points, μ[0], atol=1e-5, rtol=1e-5)])
 for i in range(1, N_particles):
     trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, 1e-7, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
 time2 = time()
+#print(trajectories)
 
 print(f"Trajectories took {(time2 - time1):.1e}s")
 plotter(N_coils, FourierCoefficients, trajectories)
+
+print("------------------------------------------------------------------------")
+#Plotting the magnetic field norm for each point in the particle's trajectory
+import matplotlib.pyplot as plt
+
+y = np.empty((N_particles, timesteps))
+x = jnp.linspace(0, 1e-7, timesteps)
+for i in range(N_particles):
+    for j in range(len(x)):
+        y[i][j] = B_Norm(trajectories[i][j][:3], curves_points, currents)
+        plt.scatter(x[j], y[i][j], label=f"Particle {i+1}")
+
+plt.xlabel("Time (s)")
+plt.ylabel("|B| (T)")
+plt.title("|B| for each point of the particle's trajectory")
+plt.savefig("images/|B|_scan.png")
+plt.show()
+        
