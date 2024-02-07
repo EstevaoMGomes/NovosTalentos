@@ -17,7 +17,7 @@ from src.Plotter import plotter
 # Inputs
 #------------------------------------------------------------------------#
 
-N_particles = 1
+N_particles = 5
 FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.], [1., 0., 0., 0., 1., 0., 0., 0., 1.]]
 #FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.]]
 N_coils = len(FourierCoefficients)
@@ -43,23 +43,26 @@ def initial_conditions(N_particles: int) -> jnp.ndarray:
     seed = 0
     key = jax.random.PRNGKey(seed)
     pitch = jax.random.uniform(key,shape=(N_particles,), minval=-1, maxval=1)
-
+    pitch = jnp.ones(N_particles)*-0.56740909
     # Initializing velocities
     vpar = vth*pitch
     vperp = vth*jnp.sqrt(1-pitch**2)
 
-    x = jnp.array([ 0.5])
-    y = jnp.array([-0.5])
-    z = jnp.array([-0.5])
+    #x = jnp.array([-0.7])
+    #y = jnp.array([ 0.3])
+    #z = jnp.array([ 0.3])
+    x = jnp.array([-0.7,-0.4, -0.5,  0.5,  0.5])
+    y = jnp.array([ 0.3,-0.3,  0.5, -0.5,  0.5])
+    z = jnp.array([ 0.3,-0.3,  0.5,  0.5, -0.5])
 
     return jnp.array((x, y, z, vpar, vperp))
 
 InitialValues = initial_conditions(N_particles)
 vperp = InitialValues[4]
-print(f"x: {jnp.transpose(InitialValues[:3])})")
+print("------------------------------------------------------------------------")
+print(f"x transposed: {jnp.transpose(InitialValues[:3])})")
 print(f"vpar: {InitialValues[3]}")
 print(f"vperp: {vperp}")
-print("------------------------------------------------------------------------")
 
 
 #------------------------------------------------------------------------#
@@ -87,38 +90,54 @@ currents = jnp.array(currents)
 #------------------------------------------------------------------------#
 
 # Compiling and running the function
-B(jnp.transpose(InitialValues[:3]), curves_points, currents)
-time1 = time(); result_MagneticField = B(jnp.transpose(InitialValues[:3]), curves_points, currents); time2 = time()
+B(jnp.transpose(InitialValues[:3])[0], curves_points, currents)
+time1 = time()
+result_MagneticField = B(jnp.transpose(InitialValues[:3])[0], curves_points, currents)
+time2 = time()
+normB = jnp.linalg.norm(result_MagneticField)
 
 field = BiotSavart(coils)
 field.B()
 field.set_points(jnp.transpose(InitialValues[:3]))
-time3 = time(); result_Simsopt = field.B(); time4 = time()
+time3 = time()
+result_Simsopt = field.B()
+time4 = time()
 
 print("------------------------------------------------------------------------")
 
-print(f"Magnetic Field at {jnp.transpose(InitialValues[:3])}:")
+print(f"Magnetic Field at {jnp.transpose(InitialValues[:3])[0]}:")
 
 print(f"From trapezoid: {result_MagneticField} took {(time2 - time1):.1e}s")
-print(f"Magnetic Field Norm: {jnp.linalg.norm(result_MagneticField[0])}")
+print(f"Magnetic Field Norm: {jnp.linalg.norm(result_MagneticField)}")
 
-print(f"From SIMSOPT:   {np.array(result_Simsopt)} took {(time4 - time3):.1e}s")
-print(f"Magnetic Field Norm: {np.linalg.norm(np.array(result_Simsopt))}")
+print(f"From SIMSOPT:   {np.array(result_Simsopt)[0]} took {(time4 - time3):.1e}s")
+print(f"Magnetic Field Norm: {np.linalg.norm(np.array(result_Simsopt)[0])}")
+
+print("------------------------------------------------------------------------")
 
 #------------------------------------------------------------------------#
 # Guiding Center Calculations
 #------------------------------------------------------------------------#
 
-time1 = time()
-Dx, Dy, Dz, Dvpar = GuidingCenter(InitialValues[:4],0.0,currents, curves_points, vperp)
-time2 = time()
 
-print("------------------------------------------------------------------------")
-print(f"Guiding Center:\n Dx: {Dx}\n Dy: {Dy}\n Dz: {Dz}\n Dvpar: {Dvpar}\nTook {(time2 - time1):.1e}s")
+m = 4*1.660538921e-27
+# Adiabatic invariant μ
+μ = m*vperp**2/(2*normB)
+print(f"μ: {μ}")
 print("------------------------------------------------------------------------")
 
+for i in range(N_particles):
+    time1 = time()
+    Dx, Dy, Dz, Dvpar = GuidingCenter(jnp.transpose(InitialValues[:4])[i],0.0,currents, curves_points, μ[i])
+    time2 = time()
+    print(f"Guiding Center for particle {i+1}:\n Dx: {Dx}\n Dy: {Dy}\n Dz: {Dz}\n Dvpar: {Dvpar}\nTook {(time2 - time1):.1e}s")
+    print("------------------------------------------------------------------------")
+
+timesteps = 20
 time1 = time()
-trajectories = odeint(GuidingCenter, InitialValues[:4], jnp.linspace(0, 1e-7, 100), currents, curves_points, vperp)
+trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, 1e-7, timesteps), currents, curves_points, μ[0], atol=1e-5, rtol=1e-5)])
+for i in range(1, N_particles):
+    trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, 1e-7, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
 time2 = time()
 
 print(f"Trajectories took {(time2 - time1):.1e}s")
