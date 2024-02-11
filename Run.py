@@ -11,7 +11,7 @@ from time import time
 from src.Dynamics import GuidingCenter
 from src.MagneticField import B, B_Norm, B_novo, grad_B
 from src.CreateCoil import CreateCoil
-from src.Plotter import plotter
+from src.Plotter import plot3D, plot2D
 
 #------------------------------------------------------------------------#
 # Inputs
@@ -81,7 +81,7 @@ for i in range(N_coils):
 
 currents = jnp.array(currents)
 
-#plotter(N_coils, FourierCoefficients)
+#plot3D(N_coils, FourierCoefficients)
 
 #------------------------------------------------------------------------#
 # Magnetic Field Calcultions
@@ -158,7 +158,7 @@ time2 = time()
 print(trajectories)
 
 print(f"Trajectories took {(time2 - time1):.1e}s")
-plotter(N_coils, FourierCoefficients, trajectories)
+plot3D(N_coils, FourierCoefficients, trajectories)
 
 print("------------------------------------------------------------------------")
 
@@ -166,7 +166,6 @@ print("------------------------------------------------------------------------"
 # Plotting analysis graphs
 #------------------------------------------------------------------------#
 
-from matplotlib import pyplot as plt
 
 NormBScan     = np.empty((N_particles, timesteps))
 NormGradBScan = np.empty((N_particles, timesteps))
@@ -181,15 +180,12 @@ Dvpar         = np.empty((N_particles, timesteps))
 t             = np.linspace(0, maxtime, timesteps)
 
 
-
 for i in range(N_particles):
     for j in range(len(t)):
         NormBScan[i][j] = B_Norm(trajectories[i][j][:3], curves_points, currents)
         NormGradBScan[i][j] = jnp.linalg.norm(grad_B(trajectories[i][j][:3], curves_points, currents))
         x[i][j], y[i][j], z[i][j], vpar[i][j] = trajectories[i][j][:]
         Dx[i][j], Dy[i][j], Dz[i][j], Dvpar[i][j] = GuidingCenter(trajectories[i][j][:],t[j],currents, curves_points, μ[0])
-
-from src.Grapher import plot2D
 
 plot2D("1x2", (t, t), (NormBScan, NormGradBScan), ("|B|", "|∇B|"), ("", "Time (s)"), ("|B| (T)", "|∇B|"), "B&GradB")
 plot2D("1x1", t, μ[0]*NormBScan+0.5*m*vpar**2, "Energy", "Time (s)", "Energy (J)", "Energy")
