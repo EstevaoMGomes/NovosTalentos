@@ -13,11 +13,12 @@ from src.MagneticField import B, B_Norm, B_novo, grad_B
 from src.CreateCoil import CreateCoil
 from src.Plotter import plot3D, plot2D
 
+debuging = False
 #------------------------------------------------------------------------#
 # Inputs
 #------------------------------------------------------------------------#
 
-N_particles = 1
+N_particles = 1000
 FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.], [1., 0., 0., 0., 1., 0., 0., 0., 1.]]
 N_coils = len(FourierCoefficients)
 N_CurvePoints = 1000
@@ -41,26 +42,30 @@ def initial_conditions(N_particles: int) -> jnp.ndarray:
     seed = 0
     key = jax.random.PRNGKey(seed)
     pitch = jax.random.uniform(key,shape=(N_particles,), minval=-1, maxval=1)
-    pitch = jnp.ones(N_particles)*-0.1
+    #pitch = jnp.ones(N_particles)*-0.1
     # Initializing velocities
     vpar = vth*pitch
     vperp = vth*jnp.sqrt(1-pitch**2)
 
-    x = jnp.array([-0.7])
-    y = jnp.array([ 0.3])
-    z = jnp.array([ 0.3])
-    #x = jnp.array([-0.7,-0.4, -0.5,  0.5,  0.5])
-    #y = jnp.array([ 0.3,-0.3,  0.5, -0.5,  0.5])
-    #z = jnp.array([ 0.3,-0.3,  0.5,  0.5, -0.5])
+    #x = jnp.array([-0.7])
+    #y = jnp.array([ 0.3])
+    #z = jnp.array([ 0.3])
+
+    x = jax.random.uniform(key,shape=(N_particles,), minval=-1, maxval=1)
+    r = jax.random.uniform(key,shape=(N_particles,), minval=0, maxval=1)
+    Θ = jax.random.uniform(key,shape=(N_particles,), minval=0, maxval=2*jnp.pi)
+    y = r*jnp.cos(Θ)
+    z = r*jnp.sin(Θ)
 
     return jnp.array((x, y, z, vpar, vperp))
 
 InitialValues = initial_conditions(N_particles)
 vperp = InitialValues[4]
-print("------------------------------------------------------------------------")
-print(f"x transposed: {jnp.transpose(InitialValues[:3])})")
-print(f"vpar: {InitialValues[3]}")
-print(f"vperp: {vperp}")
+if debuging:
+    print("------------------------------------------------------------------------")
+    print(f"x transposed: {jnp.transpose(InitialValues[:3])})")
+    print(f"vpar: {InitialValues[3]}")
+    print(f"vperp: {vperp}")
 
 
 #------------------------------------------------------------------------#
@@ -136,61 +141,73 @@ q = 2*1.602176565e-19
 
 # Adiabatic invariant μ
 μ = m*vperp**2/(2*normB)
-print(f"μ: {μ}")
-
-print("------------------------------------------------------------------------")
-
-for i in range(N_particles):
-    time1 = time()
-    Dx, Dy, Dz, Dvpar = GuidingCenter(jnp.transpose(InitialValues[:4])[i],0.0,currents, curves_points, μ[i])
-    time2 = time()
-    print(f"Guiding Center for particle {i+1}:\n Dx: {Dx}\n Dy: {Dy}\n Dz: {Dz}\n Dvpar: {Dvpar}\nTook {(time2 - time1):.1e}s")
+if debuging:
+    print(f"μ: {μ}")
     print("------------------------------------------------------------------------")
 
+if debuging:
+    for i in range(N_particles):
+        time1 = time()
+        Dx, Dy, Dz, Dvpar = GuidingCenter(jnp.transpose(InitialValues[:4])[i],0.0,currents, curves_points, μ[i])
+        time2 = time()
+        print(f"Guiding Center for particle {i+1}:\n Dx: {Dx}\n Dy: {Dy}\n Dz: {Dz}\n Dvpar: {Dvpar}\nTook {(time2 - time1):.1e}s")
+        print("------------------------------------------------------------------------")
+
 timesteps = 200
-maxtime = 1e-6
-#maxtime = 4e-7 #for 1e8 currrent
+maxtime = 1e-5
+
 time1 = time()
 trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[0], atol=1e-8, rtol=1e-8, mxstep=1000)])
 for i in range(1, N_particles):
     trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, 1e-6, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
 time2 = time()
-print(trajectories)
 
+if debuging:
+    print(trajectories)
 print(f"Trajectories took {(time2 - time1):.1e}s")
-plot3D(N_coils, FourierCoefficients, trajectories)
+print("------------------------------------------------------------------------")
 
+lost_particles = 0
+for i in range(N_particles):
+    if trajectories[i][-1][0] < -1 or trajectories[i][-1][0] > 1:
+        lost_particles += 1
+
+print(f"Lost particles fraction: {lost_particles/N_particles*100:.2f}%")
 print("------------------------------------------------------------------------")
 
 #------------------------------------------------------------------------#
 # Plotting analysis graphs
 #------------------------------------------------------------------------#
+plot = False
+
+if plot:
+    plot3D(N_coils, FourierCoefficients, trajectories)
+    if N_particles > 1:
+        raise ValueError("The plotter is not ready for more than one particle")
+    NormBScan     = np.empty((N_particles, timesteps))
+    NormGradBScan = np.empty((N_particles, timesteps))
+    x             = np.empty((N_particles, timesteps))
+    y             = np.empty((N_particles, timesteps))
+    z             = np.empty((N_particles, timesteps))
+    vpar          = np.empty((N_particles, timesteps))
+    Dx            = np.empty((N_particles, timesteps))
+    Dy            = np.empty((N_particles, timesteps))
+    Dz            = np.empty((N_particles, timesteps))
+    Dvpar         = np.empty((N_particles, timesteps))
+    t             = np.linspace(0, maxtime, timesteps)
 
 
-NormBScan     = np.empty((N_particles, timesteps))
-NormGradBScan = np.empty((N_particles, timesteps))
-x             = np.empty((N_particles, timesteps))
-y             = np.empty((N_particles, timesteps))
-z             = np.empty((N_particles, timesteps))
-vpar          = np.empty((N_particles, timesteps))
-Dx            = np.empty((N_particles, timesteps))
-Dy            = np.empty((N_particles, timesteps))
-Dz            = np.empty((N_particles, timesteps))
-Dvpar         = np.empty((N_particles, timesteps))
-t             = np.linspace(0, maxtime, timesteps)
+    for i in range(N_particles):
+        for j in range(len(t)):
+            NormBScan[i][j] = B_Norm(trajectories[i][j][:3], curves_points, currents)
+            NormGradBScan[i][j] = jnp.linalg.norm(grad_B(trajectories[i][j][:3], curves_points, currents))
+            x[i][j], y[i][j], z[i][j], vpar[i][j] = trajectories[i][j][:]
+            Dx[i][j], Dy[i][j], Dz[i][j], Dvpar[i][j] = GuidingCenter(trajectories[i][j][:],t[j],currents, curves_points, μ[0])
 
-
-for i in range(N_particles):
-    for j in range(len(t)):
-        NormBScan[i][j] = B_Norm(trajectories[i][j][:3], curves_points, currents)
-        NormGradBScan[i][j] = jnp.linalg.norm(grad_B(trajectories[i][j][:3], curves_points, currents))
-        x[i][j], y[i][j], z[i][j], vpar[i][j] = trajectories[i][j][:]
-        Dx[i][j], Dy[i][j], Dz[i][j], Dvpar[i][j] = GuidingCenter(trajectories[i][j][:],t[j],currents, curves_points, μ[0])
-
-plot2D("1x2", (t, t), (NormBScan, NormGradBScan), ("|B|", "|∇B|"), ("", "Time (s)"), ("|B| (T)", "|∇B|"), "B&GradB")
-plot2D("1x1", t, μ[0]*NormBScan+0.5*m*vpar**2, "Energy", "Time (s)", "Energy (J)", "Energy")
-plot2D("1x1", t, np.sqrt(2*m*μ[0]/NormBScan)*NormGradBScan/NormBScan/q, "⍴∇B/B", "Time (s)", "Guiding Center Validity? (⍴∇B/B <<1)", "GC_Validity")
-plot2D("1x3", (t, t, t), (x, y, z), ("x", "y", "z"), ("", "", "Time (s)"), ("Distance (m)", "Distance (m)", "Distance (m)"), "Position")
-plot2D("1x3", (t, t, t), (Dx, Dy, Dz), ("x, y and z derivatives", "", ""), ("", "", "Time (s)"), ("dx (m/s)", "dy (m/s)", "dz (m/s)"), "Position_Derivatives")
-plot2D("1x2", (t, t), (vpar, Dvpar), ("parallel velocity and its derivative", ""), ("", "Time (s)"), ("Velocity (m/s)", "Acceleration (m/s^2)"), "Parallel_Velocity&Derivative")
+    plot2D("1x2", (t, t), (NormBScan, NormGradBScan), ("|B|", "|∇B|"), ("", "Time (s)"), ("|B| (T)", "|∇B|"), "B&GradB")
+    plot2D("1x1", t, μ[0]*NormBScan+0.5*m*vpar**2, "Energy", "Time (s)", "Energy (J)", "Energy")
+    plot2D("1x1", t, np.sqrt(2*m*μ[0]/NormBScan)*NormGradBScan/NormBScan/q, "⍴∇B/B", "Time (s)", "Guiding Center Validity? (⍴∇B/B <<1)", "GC_Validity")
+    plot2D("1x3", (t, t, t), (x, y, z), ("x", "y", "z"), ("", "", "Time (s)"), ("Distance (m)", "Distance (m)", "Distance (m)"), "Position")
+    plot2D("1x3", (t, t, t), (Dx, Dy, Dz), ("x, y and z derivatives", "", ""), ("", "", "Time (s)"), ("dx (m/s)", "dy (m/s)", "dz (m/s)"), "Position_Derivatives")
+    plot2D("1x2", (t, t), (vpar, Dvpar), ("parallel velocity and its derivative", ""), ("", "Time (s)"), ("Velocity (m/s)", "Acceleration (m/s^2)"), "Parallel_Velocity&Derivative")
 
