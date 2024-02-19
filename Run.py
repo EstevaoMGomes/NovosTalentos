@@ -18,7 +18,7 @@ debuging = False
 # Inputs
 #------------------------------------------------------------------------#
 
-N_particles = 1000
+N_particles = 5
 FourierCoefficients = [[-1., 0., 0, 0., 1., 0., 0., 0., 1.], [1., 0., 0., 0., 1., 0., 0., 0., 1.]]
 N_coils = len(FourierCoefficients)
 N_CurvePoints = 1000
@@ -154,7 +154,7 @@ if debuging:
         print("------------------------------------------------------------------------")
 
 timesteps = 200
-maxtime = 1e-5
+maxtime = 1e-6
 
 time1 = time()
 trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[0], atol=1e-8, rtol=1e-8, mxstep=1000)])
@@ -178,7 +178,7 @@ print("------------------------------------------------------------------------"
 #------------------------------------------------------------------------#
 # Plotting analysis graphs
 #------------------------------------------------------------------------#
-plot = False
+plot = True
 
 if plot:
     plot3D(N_coils, FourierCoefficients, trajectories)
