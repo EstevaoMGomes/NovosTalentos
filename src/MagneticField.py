@@ -59,6 +59,7 @@ def B_novo(R: jnp.array, curve_points: jnp.array, currents:jnp.array) -> jnp.arr
     """
     directions = jnp.diff(curve_points, axis=1)
     Rprime = jsp.signal.convolve(curve_points, jnp.array([[[0.5],[0.5]]]), mode='valid')
-    #dB_sum = jnp.einsum("a,abc", currents*1e-7,jnp.divide(jnp.cross(directions,R-Rprime),jnp.reshape(jnp.repeat(jnp.linalg.norm(R-Rprime, axis=2)**3, 3), (len(curve_points),len(Rprime[0]),3))))
-    dB_sum = jnp.einsum("a,abc", currents*1e-7,jnp.transpose(jnp.swapaxes(jnp.cross(directions,R-Rprime), 0,2)/jnp.transpose(jnp.linalg.norm(R-Rprime, axis=2)**3)))
+    #print(jnp.shape(jnp.transpose(jnp.cross(directions,R-Rprime))))
+    #print(jnp.shape(jnp.linalg.norm(R-Rprime, axis=2)**-3))
+    dB_sum = jnp.einsum("a,cba", currents*1e-7,jnp.transpose(jnp.cross(directions,R-Rprime))/jnp.transpose(jnp.linalg.norm(R-Rprime, axis=2)**3))
     return jsp.integrate.trapezoid(dB_sum, axis=0)

@@ -5,13 +5,18 @@ from jax.scipy.optimize import minimize
 from jax.experimental.ode import odeint
 from simsopt.field import Current, Coil
 import numpy as np
+import scipy as sp
+from scipy.optimize import minimize as spminimize
+from scipy.optimize import least_squares
 from time import time
+from functools import partial
+from simsopt import load
 
 from src.Dynamics import GuidingCenter
 from src.MagneticField import B_Norm
 from src.CreateCoil import CreateCoil
 
-#@jit # This is not working because of the random number generator
+@partial(jit, static_argnums=(0,))
 def initial_conditions(N_particles: int) -> jnp.ndarray:
         # Alpha particles energy in SI units
         E = 3.52*1.602176565e-13
@@ -38,8 +43,8 @@ def initial_conditions(N_particles: int) -> jnp.ndarray:
 
         return jnp.array((x, y, z, vpar, vperp))
 
-#@jit
-def loss(FourierCoefficients: list, N_particles: int, N_coils: int, N_CurvePoints: int, currents: list) -> jnp.float64:
+@partial(jit, static_argnums=(1, 2, 3))
+def loss(FourierCoefficients: jnp.ndarray, N_particles: int, N_coils: int, N_CurvePoints: int, currents: jnp.ndarray) -> jnp.float64:
     FourierCoefficients = jnp.reshape(FourierCoefficients, (N_coils, -1))
     FC_order = int((len(FourierCoefficients[0])/3-1)/2)
 
@@ -49,7 +54,6 @@ def loss(FourierCoefficients: list, N_particles: int, N_coils: int, N_CurvePoint
     InitialValues = initial_conditions(N_particles)
     vperp = InitialValues[4]
 
-    curves = np.empty(N_coils, dtype=object)
     curves_points = jnp.empty((N_coils, N_CurvePoints, 3))
 
     for i in range(N_coils):
@@ -62,30 +66,92 @@ def loss(FourierCoefficients: list, N_particles: int, N_coils: int, N_CurvePoint
 
     μ = m*vperp**2/(2*normB)
     timesteps = 200
-    maxtime = 1e-5
+    maxtime = 5e-7
 
     trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[0], atol=1e-8, rtol=1e-8, mxstep=1000)])
     for i in range(1, N_particles):
         trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, 1e-6, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
 
-    lost_particles = 0
-    for i in range(N_particles):
-        if trajectories[i][-1][0] < -1 or trajectories[i][-1][0] > 1:
-            lost_particles += 1
-    
+
+
+    #lost_particles = 0
+    #for i in range(N_particles):
+    #    if trajectories[i][-1][0] < -1 or trajectories[i][-1][0] > 1:
+    #        lost_particles += 1
+
+    loss_value = jnp.sum(jnp.linalg.norm(trajectories[:][0] - trajectories[:][-1], axis = -1), axis=0)
+    #distances = jnp.linalg.norm(trajectories[:][0] - trajectories[:][-1], axis = -1)
+
+    return loss_value
     return lost_particles/N_particles
 
+print(load('TandemCoil/Optimize.json').getdofs())
+#for i in range(int(len(load('TandemCoil/Optimize.json').x)/50)):
+#    print(load('TandemCoil/Optimize.json').x[i*50])
 N_particles = 100
 N_CurvePoints = 1000
-currents = [1e7, 1e7]
-FourierCoefficients = jnp.array([-1., 0., 0,   0., 1., 0.,    0., 0., 1.,   1., 0., 0., 0., 1., 0., 0., 0., 1.])
+currents = jnp.array([1e7, 1e7])
+FourierCoefficients = jnp.array([-1., 0., 0., 0., 0.,   0., 1, 0.,0., 0.,    0., 0., 1.,0., 0.,   1., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 1., 0., 0.,])
+#FourierCoefficients = jnp.array([-1., 0., 0,  0., 1., 0.,  0., 0., 1.,   1., 0., 0,  1., 0., 0.,  0., 0., 1., ])
+order = 2
 N_coils = 2
 time1 = time()
-loss_fraction = loss(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents)
+loss_value = loss(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents)
 time2 = time()
-print(f"Lost particles fraction: {loss_fraction*100:.2f}%")
+print("-"*80)
+print(f"Lost particles summed distance: {loss_value:.8e} m")
 print(f"Took: {time2-time1:.2f} seconds")
 
-print(jax.grad(loss, argnums=(0))(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents))
+loss_value = loss(FourierCoefficients*(1+1e-6), N_particles, N_coils, N_CurvePoints, currents)
+time2 = time()
+print(f"Lost particles summed distances: {loss_value:.8e} m")
+print(f"Took: {time2-time1:.2f} seconds")
+print("-"*80)
+
+#grad_loss = jax.grad(loss, argnums=(0,))
+
+#loss2 = partial(loss, N_particles=N_particles, N_coils=N_coils, N_CurvePoints=N_CurvePoints, currents=currents)
+#@jit
+#def grad_loss_function(params):
+#    grad_func = jax.jacrev(loss2)(params)
+#    return grad_func
+#import numpy as np
+#from scipy.optimize import least_squares
+#def loss_function_jac(params):
+#    return np.array(grad_loss_function(params))
+#def loss_function_np(params):
+#    return np.array(loss2(params))
+
+
+#print("[", end="")
+#for i in grad_loss(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents)[0]:
+#    print(f"{i},", end=" ")
+#print("]")
+
 #print(jax.hessian(loss, argnums=0)(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents))
-minimize(loss, FourierCoefficients, args=(N_particles, N_coils, N_CurvePoints, currents), method='BFGS', options={'maxiter': 1e3})
+#minima = spminimize(loss, FourierCoefficients, args=(N_particles, N_coils, N_CurvePoints, currents), method='BFGS', options={'maxiter': 10})
+
+
+start_optimize = time()
+minima = minimize(loss, FourierCoefficients, args=(N_particles, N_coils, N_CurvePoints, currents), method='BFGS', options={'maxiter': 10})
+end_optimize = time()
+#minima = least_squares(loss_function_np, FourierCoefficients, jac = loss_function_jac, verbose=2, x_scale='jac', max_nfev=int(3))
+print(minima.x)
+print("-"*80)
+
+value = int(3*(1+2*order))
+out = "[["
+for i, val in enumerate(minima.x):
+    j = i+1
+    out += f"{val}, "
+    if j % value == 0:
+        out = out[:-2]
+        out += "], ["
+out = out[:-3]
+print(out + "]")
+print("-"*80)
+print(f"Optimization took {end_optimize - start_optimize:.2f} s")
+print(f"Loss distance after optimization: {minima.fun:.8e} m")
+print(f"Optimization status: {minima.status}")
+print("-"*80)
+
