@@ -3,15 +3,16 @@ import jax.numpy as jnp
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import os
+from src.CreateCoil import CreateCoil, oldCreateCoil
 
-def plot3D(N_coils: int, FourierCoefficients: list[int | float], Trajectories = jnp.zeros(0)):
+def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
+    dofs = jnp.array(dofs)
+    N_coils = len(dofs)
     trace_curve = np.empty(N_coils, dtype=object)
-    phi = np.linspace(0, 2*np.pi, 200)
-    for i in range(len(FourierCoefficients)):
-        trace_curve[i] = go.Scatter3d(x=FourierCoefficients[i][0]+FourierCoefficients[i][1]*jnp.cos(phi)+FourierCoefficients[i][2]*jnp.sin(phi),
-                                      y=FourierCoefficients[i][3]+FourierCoefficients[i][4]*jnp.cos(phi)+FourierCoefficients[i][5]*jnp.sin(phi),
-                                      z=FourierCoefficients[i][6]+FourierCoefficients[i][7]*jnp.cos(phi)+FourierCoefficients[i][8]*jnp.sin(phi),
-                                      mode='lines', name=f'Coil {i+1}', line=dict(color='rgb(179,179,179)', width=4))
+    for i in range(N_coils):
+        order = int((len(dofs[i])/3-1)/2)
+        coil = CreateCoil(dofs[i], 200, order)
+        trace_curve[i] = go.Scatter3d(x=coil[:,0],y=coil[:,1],z=coil[:,2], mode='lines', name=f'Coil {i+1}', line=dict(color='rgb(179,179,179)', width=4))
 
     # Create layout for the plot
     layout = go.Layout(scene=dict(aspectmode='cube'))
