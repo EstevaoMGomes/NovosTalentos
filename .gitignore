@@ -1,9 +1,8 @@
 /NovosTalentos
-/bin
 teste.py
-Notes.nb
 roger.py
+Notes.nb
 /presentations
 env.yml
-jaxGPU.py
 /old
+/src/__pycache__
