@@ -5,7 +5,7 @@ by Estêvão Gomes ([@EstevaoMGomes](https://github.com/EstevaoMGomes))
 This project is a Stellarator Coil Optimizer of alpha particles via differentiable JAX code and was developed as the research 
 work for the New Talents in Physics Fellowship, awarded by the [Calouste Gulbenkian Foundation](https://gulbenkian.pt/en/).
 
-The project was developed under the supervision of professor Rogério Jorge [@rogeriojorge](https://github.com/rogeriojorge).
+The project was developed under the supervision of professor Rogério Jorge ([@rogeriojorge](https://github.com/rogeriojorge)).
 
 ## Repository Organization
 
