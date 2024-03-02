@@ -6,3 +6,4 @@ Notes.nb
 env.yml
 /old
 /src/__pycache__
+.DS_Store
