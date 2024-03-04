@@ -21,8 +21,8 @@ from a set of coils and optimize them to yield a small fraction of lost particle
 confinement region. Furthermore, to replace the need for hundreds of simulations per
 optimization step, we make use of automatic differentiation by implementing the guiding-center
 equations, magnetic field solver, and optimization routines in JAX. This allows us to streamline
-optimization efforts, and create a specialized, but very fast, numerical tool, to optimize force-
-free stellarator equilibria. As force-free equilibria are usually the first step in determining the
+optimization efforts, and create a specialized, but very fast, numerical tool, to optimize force-free
+stellarator equilibria. As force-free equilibria are usually the first step in determining the
 viability of a device, such optimizations will be able to guide future designs based on ideal
 MHD equilibria.
 
@@ -33,13 +33,6 @@ git clone https://github.com/EstevaoMGomes/NovosTalentos.git
 ```
 The easiest way to run an example script is to create a conda environment:
 ```
-conda create --name myenv --file spec-file.txt
+conda create --name myenv --file spec-file.txt    maybe (python=3.12.2)
 ```
 where "myenv" is the name you want your environment to have and "spec-file.txt" can be dependenciesGPU.txt or dependenciesCPU.txt, whether you want to run the scripts in CPU or GPU.
-
-
-
-
-
-
-[def]: #how-to-use-the-repository

@@ -1,5 +1,4 @@
 from simsopt.geo import CurveXYZFourier
-import pandas as pd
 from jax import jit
 from functools import partial
 import jax.numpy as jnp
