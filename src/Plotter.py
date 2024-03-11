@@ -23,7 +23,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
     # Add the trajectories to the plot
     for i in range(len(Trajectories)):
         for j in range(len(Trajectories[i])):
-            fig.add_trace(go.Scatter3d(x=[Trajectories[i][j][0]], y=[Trajectories[i][j][1]], z=[Trajectories[i][j][2]], mode='markers', marker=dict(size=2, color=f'rgb({i*50},100,140)'), name= f"Trajectory {i+1}"))
+            fig.add_trace(go.Scatter3d(x=[Trajectories[i][j][0]], y=[Trajectories[i][j][1]], z=[Trajectories[i][j][2]], mode='markers', marker=dict(size=2, color=f'rgb({255/len(Trajectories)*i},100,140)'), name= f"Trajectory {i+1}"))
     
     fig.update_layout(showlegend=False, title=None)
     fig.update_layout(scene=dict(

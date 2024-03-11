@@ -1,5 +1,6 @@
 from simsopt.geo import CurveXYZFourier
 from jax import jit
+from jax.lax import fori_loop
 from functools import partial
 import jax.numpy as jnp
 
@@ -27,6 +28,13 @@ def CreateCoil(dofs: jnp.ndarray, numquadpoints: int, order: int) -> jnp.ndarray
     quadpoints = jnp.linspace(0, 1, numquadpoints + 1)[:-1]
 
     data = jnp.outer(dofs[:, 0], jnp.ones(numquadpoints))
-    for j in range(1, order + 1):
-        data = data + jnp.outer(dofs[:, 2 * j - 1], jnp.sin(2 * jnp.pi * j * quadpoints)) + jnp.outer(dofs[:, 2 * j], jnp.cos(2 * jnp.pi * j * quadpoints))
+    
+    @jit
+    def fori_createdata(order_index: jnp.int32, data: jnp.ndarray) -> jnp.ndarray:
+        return data + jnp.outer(dofs[:, 2 * order_index - 1], jnp.sin(2 * jnp.pi * order_index * quadpoints)) + jnp.outer(dofs[:, 2 * order_index], jnp.cos(2 * jnp.pi * order_index * quadpoints))
+    data = fori_loop(1, order+1,fori_createdata, data) # THIS IS SLOWER, but can be better for compilation
+    
+    
+    #for j in range(1, order + 1):
+    #    data = data + jnp.outer(dofs[:, 2 * j - 1], jnp.sin(2 * jnp.pi * j * quadpoints)) + jnp.outer(dofs[:, 2 * j], jnp.cos(2 * jnp.pi * j * quadpoints))
     return jnp.transpose(data)
