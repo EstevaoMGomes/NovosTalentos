@@ -79,13 +79,12 @@ def loss(FourierCoefficients: jnp.ndarray, N_particles: int, N_coils: int, N_Cur
     #    trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
     
     trajectories = jnp.empty((N_particles, timesteps, 4))
+    times = jnp.linspace(0, maxtime, timesteps)
+
     @jit
-    def trace_trajectory(particle: jnp.int32, InitialValues: jnp.ndarray, times: jnp.ndarray, currents: jnp.ndarray, curves_points: jnp.ndarray, μ: jnp.float32) -> jnp.ndarray:
-        return odeint(GuidingCenter, InitialValues[particle], times, currents, curves_points, μ[particle], atol=1e-8, rtol=1e-8, mxstep=100)
-    @jit
-    def fori_trace_trajectory(particle: jnp.int32, trajectories: jnp.ndarray) -> jnp.ndarray:
-        return trajectories.at[particle,:,:].set(trace_trajectory(particle, jnp.transpose(InitialValues[:4]), jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ))
-    trajectories = fori_loop(0, N_particles,fori_trace_trajectory, trajectories)
+    def trace_trajectory(particle: jnp.int32, trajectories: jnp.ndarray) -> jnp.ndarray:
+        return trajectories.at[particle,:,:].set(odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[particle], times, currents, curves_points, μ[particle], atol=1e-8, rtol=1e-8, mxstep=100))
+    trajectories = fori_loop(0, N_particles, trace_trajectory, trajectories)
 
 
     loss_value = jnp.sum(jnp.linalg.norm(trajectories[:][0] - trajectories[:][-1], axis = -1), axis=0)
@@ -109,13 +108,13 @@ FourierCoefficients = Fourier
 """
 
 N_particles = 100
-N_CurvePoints = 100
+N_CurvePoints = 1000
 currents = jnp.array([1e7, 1e7])
-#FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,
-#                                  1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.])
-FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
-                                  1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.])
-order = 2
+FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,
+                                  1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.])
+#FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
+#                                  1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.])
+
 N_coils = 2
 
 time1 = time()
@@ -126,14 +125,13 @@ print(f"Lost particles summed distance: {loss_value:.8e} m")
 print(f"Took: {time2-time1:.2f} seconds")
 
 
-
 start_optimize = time()
 minima = minimize(loss, FourierCoefficients, args=(N_particles, N_coils, N_CurvePoints, currents), method='BFGS', options={'maxiter': 10})
 end_optimize = time()
 
 
 print("-"*80)
-value = int(3*(1+2*order))
+value = int(len(FourierCoefficients)/N_coils)
 out = "[["
 for i, val in enumerate(minima.x):
     j = i+1
