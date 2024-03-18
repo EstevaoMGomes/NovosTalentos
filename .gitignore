@@ -3,7 +3,7 @@ teste.py
 roger.py
 Notes.nb
 /presentations
-env.yml
+requirements.txt
 /old
 /src/__pycache__
 .DS_Store

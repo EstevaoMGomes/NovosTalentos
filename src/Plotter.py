@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import os
-from src.CreateCoil import CreateCoil, oldCreateCoil
+from src.CreateCoil import CreateCoil
 
 def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
     dofs = jnp.array(dofs)

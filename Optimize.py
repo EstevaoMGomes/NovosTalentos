@@ -1,22 +1,26 @@
 import jax
 import jax.numpy as jnp
 from jax import jit
-from jax.lax import fori_loop
+from jax.lax import fori_loop, select, while_loop
 from jax.scipy.optimize import minimize
 from jax.experimental.ode import odeint
-from simsopt.field import Current, Coil
 import numpy as np
 import scipy as sp
 from scipy.optimize import minimize as spminimize
 from scipy.optimize import least_squares
 from time import time
 from functools import partial
-from simsopt import load
 
 from src.Dynamics import GuidingCenter
 from src.MagneticField import B_Norm
 from src.CreateCoil import CreateCoil
 from src.Plotter import plot3D
+
+#print("Available devices: ", jax.devices())
+#jax.default_device(jax.devices('gpu')[0])
+#jax.default_device(jax.devices('cuda')[0])
+print("Current device: ", jax.devices())
+#nvidia-smi
 
 @partial(jit, static_argnums=(0,))
 def initial_conditions(N_particles: jnp.int32) -> jnp.ndarray:
@@ -38,7 +42,7 @@ def initial_conditions(N_particles: jnp.int32) -> jnp.ndarray:
 
     # Initializing positions
     x = jax.random.uniform(key,shape=(N_particles,), minval=-1, maxval=1)
-    r = jax.random.uniform(key,shape=(N_particles,), minval=0, maxval=0.7)
+    r = jax.random.uniform(key,shape=(N_particles,), minval=0, maxval=1)
     Θ = jax.random.uniform(key,shape=(N_particles,), minval=0, maxval=2*jnp.pi)
     y = r*jnp.cos(Θ)
     z = r*jnp.sin(Θ)
@@ -58,26 +62,17 @@ def loss(FourierCoefficients: jnp.ndarray, N_particles: int, N_coils: int, N_Cur
 
     curves_points = jnp.empty((N_coils, N_CurvePoints, 3))
 
-    #for i in range(N_coils):
-    #    # Creating a curve with "NCurvePoints" points and "FCorder" order of the Fourier series
-    #    curves_points = curves_points.at[i].set(CreateCoil(FourierCoefficients[i], N_CurvePoints, FC_order))
-
     @jit
     def fori_createcoil(coil: jnp.int32, curves_points: jnp.ndarray) -> jnp.ndarray:
         return curves_points.at[coil].set(CreateCoil(FourierCoefficients[coil], N_CurvePoints, FC_order))
-    curves_points = fori_loop(0, N_particles,fori_createcoil, curves_points) # THIS IS SLOWER, but can be better for compilation
+    curves_points = fori_loop(0, N_particles,fori_createcoil, curves_points)
 
 
     normB = B_Norm(jnp.transpose(InitialValues[:3])[0], curves_points, currents)
 
     μ = m*vperp**2/(2*normB)
-    timesteps = 200
+    timesteps = 10000
     maxtime = 1e-6
-
-    #trajectories = jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[0], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[0], atol=1e-8, rtol=1e-8, mxstep=1000)])
-    #for i in range(1, N_particles):
-    #    trajectories = jnp.concatenate((trajectories, jnp.array([odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[i], jnp.linspace(0, maxtime, timesteps), currents, curves_points, μ[i], atol=1e-5, rtol=1e-5)])), axis=0)
-    
     trajectories = jnp.empty((N_particles, timesteps, 4))
     times = jnp.linspace(0, maxtime, timesteps)
 
@@ -86,8 +81,22 @@ def loss(FourierCoefficients: jnp.ndarray, N_particles: int, N_coils: int, N_Cur
         return trajectories.at[particle,:,:].set(odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[particle], times, currents, curves_points, μ[particle], atol=1e-8, rtol=1e-8, mxstep=100))
     trajectories = fori_loop(0, N_particles, trace_trajectory, trajectories)
 
+    
+    
+    left_boundary = -1
+    right_boundary = 1
+    radial_boundary = 1
+    is_lost = select(jnp.logical_or(jnp.logical_or(jnp.greater(trajectories[:, :, 0], right_boundary*jnp.ones((N_particles,timesteps))),
+                        jnp.less(trajectories[:, :, 0], left_boundary*jnp.ones((N_particles,timesteps)))),
+                        jnp.greater(jnp.square(trajectories[:, :, 1])+jnp.square(trajectories[:, :, 2]), radial_boundary*jnp.ones((N_particles,timesteps)))),
+                        jnp.ones((N_particles,timesteps)), jnp.zeros((N_particles,timesteps)))
+    
+    @jit
+    def loss_calc(x: jnp.ndarray) -> jnp.ndarray:
+        return 3.5*jnp.exp(-2*jnp.nonzero(x, size=1, fill_value=timesteps)[0]/timesteps)
+    loss_value = jnp.sum(jnp.apply_along_axis(loss_calc, 1, is_lost))
 
-    loss_value = jnp.sum(jnp.linalg.norm(trajectories[:][0] - trajectories[:][-1], axis = -1), axis=0)
+    #loss_value = jnp.sum(jnp.linalg.norm(trajectories[:][0] - trajectories[:][-1], axis = -1), axis=0)
 
     return loss_value
 
@@ -107,11 +116,11 @@ for i in range(len(Fourier)):
 FourierCoefficients = Fourier
 """
 
-N_particles = 100
+N_particles = 1000
 N_CurvePoints = 1000
 currents = jnp.array([1e7, 1e7])
-FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.,
-                                  1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0.])
+FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+                                  1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
 #FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
 #                                  1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.])
 
@@ -121,7 +130,7 @@ time1 = time()
 loss_value = loss(FourierCoefficients, N_particles, N_coils, N_CurvePoints, currents)
 time2 = time()
 print("-"*80)
-print(f"Lost particles summed distance: {loss_value:.8e} m")
+print(f"Loss function intial value: {loss_value:.8f}")
 print(f"Took: {time2-time1:.2f} seconds")
 
 
@@ -140,10 +149,11 @@ for i, val in enumerate(minima.x):
         out = out[:-2]
         out += "], ["
 out = out[:-3]
-print(out + "]")
+print(out + "]]")
 print("-"*80)
 print(f"Optimization took {end_optimize - start_optimize:.2f} s")
-print(f"Loss distance after optimization: {minima.fun:.8e} m")
+print(f"Loss function final value: {minima.fun:.8f}")
+print(f"Optimization success: {minima.success}")
 print(f"Optimization status: {minima.status}")
 print("-"*80)
 
