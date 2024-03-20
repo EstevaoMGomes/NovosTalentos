@@ -14,7 +14,7 @@ from functools import partial
 from src.Dynamics import GuidingCenter
 from src.MagneticField import B_Norm
 from src.CreateCoil import CreateCoil
-from src.Plotter import plot3D
+from src.Plotter import plot3D, plot2D
 
 #print("Available devices: ", jax.devices())
 #jax.default_device(jax.devices('gpu')[0])
@@ -87,9 +87,9 @@ def loss(FourierCoefficients: jnp.ndarray, N_particles: int, N_coils: int, N_Cur
     right_boundary = 1
     radial_boundary = 1
     is_lost = select(jnp.logical_or(jnp.logical_or(jnp.greater(trajectories[:, :, 0], right_boundary*jnp.ones((N_particles,timesteps))),
-                        jnp.less(trajectories[:, :, 0], left_boundary*jnp.ones((N_particles,timesteps)))),
-                        jnp.greater(jnp.square(trajectories[:, :, 1])+jnp.square(trajectories[:, :, 2]), radial_boundary*jnp.ones((N_particles,timesteps)))),
-                        jnp.ones((N_particles,timesteps)), jnp.zeros((N_particles,timesteps)))
+                     jnp.less(trajectories[:, :, 0], left_boundary*jnp.ones((N_particles,timesteps)))),
+                     jnp.greater(jnp.square(trajectories[:, :, 1])+jnp.square(trajectories[:, :, 2]), radial_boundary*jnp.ones((N_particles,timesteps)))),
+                     jnp.ones((N_particles,timesteps)), jnp.zeros((N_particles,timesteps)))
     
     @jit
     def loss_calc(x: jnp.ndarray) -> jnp.ndarray:
@@ -116,10 +116,10 @@ for i in range(len(Fourier)):
 FourierCoefficients = Fourier
 """
 
-N_particles = 1000
-N_CurvePoints = 1000
+N_particles = 10000
+N_CurvePoints = 100
 currents = jnp.array([1e7, 1e7])
-FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
+FourierCoefficients = jnp.array([-0.7, 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.,
                                   1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.])
 #FourierCoefficients = jnp.array([-1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.,
 #                                  1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 1., 0., 0., 0., 0.])
@@ -132,8 +132,15 @@ time2 = time()
 print("-"*80)
 print(f"Loss function intial value: {loss_value:.8f}")
 print(f"Took: {time2-time1:.2f} seconds")
-
-
+"""
+indices = []
+losses = []
+for i in jnp.arange(-1.5, -0.5, 0.1):
+    indices += [i]
+    losses += [loss(FourierCoefficients.at[0].set(i), N_particles, N_coils, N_CurvePoints, currents)]
+plot2D("1x1", indices, losses, "Loss function", "1st Fourier Coefficient", "Loss", "LossFunction")
+raise SystemExit
+"""
 start_optimize = time()
 minima = minimize(loss, FourierCoefficients, args=(N_particles, N_coils, N_CurvePoints, currents), method='BFGS', options={'maxiter': 10})
 end_optimize = time()
