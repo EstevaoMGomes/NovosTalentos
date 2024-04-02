@@ -2,7 +2,10 @@ import numpy as np
 import jax.numpy as jnp
 import plotly.graph_objects as go
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 import os
+from jax import jit
+from jax.lax import fori_loop
 from src.CreateCoil import CreateCoil
 
 def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
@@ -31,6 +34,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
         yaxis=dict(title='y'),
         zaxis=dict(title='z')
     ))
+    fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
 
     # Show the plot
     fig.show()
@@ -124,3 +128,122 @@ def plot2D(shape: str, x_axis: tuple, y_axis: tuple, title: str | tuple, x_label
         raise ValueError("Shape not supported") 
     plt.close()
     return plot2D
+
+
+def update(num, trajectories, lines):
+    for line, walk in zip(lines, trajectories):
+        line.set_data(walk[:num, :2].T)
+        line.set_3d_properties(walk[:num, 2])
+    return lines
+
+def plot_animation3d(
+    dofs, surface, trajectories, num_steps, distance=1, show=True, save_movie=False
+):
+    """
+    Show a three-dimensional animation of a particle
+    orbit together with a flux surface of the stellarator
+    """
+    fig = plt.figure(figsize=(6, 4))
+    ax = fig.add_subplot(111, projection="3d")
+    dofs = jnp.array(dofs)
+
+    #################################################################
+    """
+    from src.MagneticField import B
+    N_CurvePoints = 100
+    FC_order = int((len(dofs[0])/3-1)/2)
+    curves_points = jnp.empty((2, N_CurvePoints, 3))
+
+    @jit
+    def fori_createcoil(coil: jnp.int32, curves_points: jnp.ndarray) -> jnp.ndarray:
+        return curves_points.at[coil].set(CreateCoil(dofs[coil], N_CurvePoints, FC_order))
+    curves_points = fori_loop(0, 2, fori_createcoil, curves_points)
+
+    x = np.arange(-2.5, 2.6, 1.25)
+    y = np.arange(-1, 1.1, 0.5)
+    z = np.arange(-1, 1.1, 0.5)
+
+    u = np.zeros(5)
+    v = np.zeros(5)
+    w = np.zeros(5)
+
+    for i in range(5):
+        u[i], v[i], w[i] = B(jnp.array([x[i],y[i],z[i]]), curves_points, jnp.array([1e7, 1e7]))
+
+
+    x, y, z = np.meshgrid(x, y, z)
+    u, v, w = np.meshgrid(u, v, w)
+    ax.quiver(x, y, z, x+u, y+v, z+w, length=0.1, normalize=False, linewidth = 2, color = "tomato")
+    """
+    #################################################################
+
+    
+    N_coils = len(dofs)
+    for i in range(N_coils):
+        order = int((len(dofs[i])/3-1)/2)
+        coil = CreateCoil(dofs[i], 200, order)
+        ax.plot(coil[:,0],coil[:,1],coil[:,2], color='gray')
+
+    if surface[0] == "cylinder":
+        us = np.linspace(0, 2 * np.pi, 128)
+        xs = np.linspace(surface[1], surface[2], 2)
+
+        us, xs = np.meshgrid(us, xs)
+
+        ys = surface[3] * np.cos(us)
+        zs = surface[3] * np.sin(us)
+        ax.plot_surface(xs, ys, zs, cmap='plasma', alpha=0.2)
+    
+    if surface[0] == "torus":
+        minor_radius = surface[1]
+        major_radius = surface[2]
+
+        phi = np.linspace(0, 2 * np.pi, 64)
+        theta = np.linspace(0, 2 * np.pi, 64)
+
+        phi, theta = np.meshgrid(phi, theta)
+
+        xs = (minor_radius*np.cos(theta)+major_radius)*np.cos(phi)
+        ys = (minor_radius*np.cos(theta)+major_radius)*np.sin(phi)
+        zs = minor_radius*np.sin(theta)
+        ax.plot_surface(xs, ys, zs, cmap='plasma', alpha=0.2)
+    
+    ax.xaxis._axinfo["grid"]["color"] = (1, 1, 1, 0)  # pylint: disable=W0212
+    ax.yaxis._axinfo["grid"]["color"] = (1, 1, 1, 0)  # pylint: disable=W0212
+    ax.zaxis._axinfo["grid"]["color"] = (1, 1, 1, 0)  # pylint: disable=W0212
+    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.set_axis_off()
+    ax.dist = distance
+    #ax.set_zlim(-2,2)
+    #ax.set_xlim(-2,2)
+    #ax.set_ylim(-2,2)
+
+    #plt.show()
+    #plt.savefig("images/B_Field.png", transparent=True)
+    #raise SystemExit
+    
+    lines = [ax.plot([], [], [])[0] for _ in trajectories]
+
+    ani = animation.FuncAnimation(
+        fig,
+        update,
+        num_steps,
+        fargs=(trajectories, lines),
+        interval=num_steps / 200,
+        #interval=100,
+    )
+
+    if show:
+        plt.show()
+
+    if save_movie:
+        ani.save(
+            filename="images/ParticleOrbit.gif",
+            fps=30,
+            dpi=300,
+            #codec="libx264",
+            #bitrate=-1,
+            savefig_kwargs={"transparent": True},
+        )

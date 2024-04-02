@@ -1,16 +1,7 @@
-#from simsopt.geo import CurveXYZFourier
 from jax import jit
 from functools import partial
 import jax.numpy as jnp
 from jax.lax import fori_loop
-
-
-#def oldCreateCoil(FourierCoefficients: list[int | float], NumberOfPoints: int, order: float) -> CurveXYZFourier:
-#    # Creating a curve with "NumberOfPoints" points and "order" number of Fourier coefficients
-#    curve = CurveXYZFourier(NumberOfPoints, order=order)
-#    # Setting the Fourier coefficients
-#    curve.x = FourierCoefficients
-#    return curve
 
 @partial(jit, static_argnums=(1, 2))
 def CreateCoil(dofs: jnp.ndarray, numquadpoints: int, order: int) -> jnp.ndarray:
