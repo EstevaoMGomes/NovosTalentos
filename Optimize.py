@@ -32,7 +32,7 @@ def loss(FourierCoefficients: jnp.ndarray,
     m = 4*1.660538921e-27
     q = 2*1.602176565e-19
 
-    R = 1.0
+    R = 5.5
     InitialValues = initial_conditions(N_particles, "torus", R, 0.2)
     #InitialValues = initial_conditions(N_particles, "cylinder", 1.0, 0.5)
     vperp = InitialValues[4]
@@ -96,7 +96,7 @@ N_CurvePoints = 1000
 
 ncoils = 50
 order = 6
-R = 1.0
+R = 5.5
 r = 0.5
 FourierCoefficients = jnp.ravel(CreateEquallySpacedCurves(ncoils, order, R, r))
 currents = jnp.ones(ncoils)*1e7
