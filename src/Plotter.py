@@ -13,8 +13,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
     N_coils = len(dofs)
     trace_curve = np.empty(N_coils, dtype=object)
     for i in range(N_coils):
-        order = int((len(dofs[i])/3-1)/2)
-        coil = CreateCoil(dofs[i], 200, order)
+        coil = CreateCoil(dofs[i], 200)
         trace_curve[i] = go.Scatter3d(x=coil[:,0],y=coil[:,1],z=coil[:,2], mode='lines', name=f'Coil {i+1}', line=dict(color='rgb(179,179,179)', width=4))
 
     # Create layout for the plot
@@ -181,7 +180,7 @@ def plot_animation3d(
     N_coils = len(dofs)
     for i in range(N_coils):
         order = int((len(dofs[i])/3-1)/2)
-        coil = CreateCoil(dofs[i], 200, order)
+        coil = CreateCoil(dofs[i], 200)
         ax.plot(coil[:,0],coil[:,1],coil[:,2], color='gray')
 
     if surface[0] == "cylinder":

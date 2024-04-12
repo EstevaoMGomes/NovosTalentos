@@ -55,5 +55,3 @@ def grad_B(R: jnp.array, curve_points: jnp.array, currents:jnp.array) -> jnp.arr
     B: jnp.array: Magnetic field gradient at point R - shape (3,)
     """
     return grad(B_Norm, argnums=(0))(R, curve_points, currents)
-    #gradB = grad(B_Norm, argnums=(0))(R, curve_points, currents)
-    #return jnp.array([gradB[0], gradB[1], gradB[2]])
