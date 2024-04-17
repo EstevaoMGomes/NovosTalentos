@@ -8,3 +8,7 @@ requirements.txt
 /src/__pycache__
 .DS_Store
 teste2.py
+Djin.py
+field_lines_minB.npy
+field_lines.npy
+B_target_minB.npy

@@ -2,9 +2,9 @@ import jax.numpy as jnp
 from jax import random
 
 def initial_conditions(N_particles: int,
-                       type: str,
-                       s1: float,
-                       s2: float) -> jnp.ndarray:
+                       type:        str,
+                       s1:          float,
+                       s2:          float) -> jnp.ndarray:
     """ Creates initial conditions for the particles.
         Attributes:
     N_particles: int: Number of particles

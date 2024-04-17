@@ -33,7 +33,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
         yaxis=dict(title='y'),
         zaxis=dict(title='z')
     ))
-    fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
+    #fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
 
     # Show the plot
     fig.show()

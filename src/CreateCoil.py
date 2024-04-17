@@ -15,8 +15,8 @@ def CreateCoil(dofs: jnp.ndarray, numquadpoints: int) -> jnp.ndarray:
     # Creating a curve with "NumberOfPoints" points and "order" number of Fourier coefficients
     order = int((len(dofs[0])-1)/2)
 
-    #quadpoints = jnp.linspace(0, 1, numquadpoints + 1)[:-1] # Like Simopt
-    quadpoints = jnp.linspace(0, 1, numquadpoints)
+    quadpoints = jnp.linspace(0, 1, numquadpoints + 1)[:-1] # Like Simopt
+    #quadpoints = jnp.linspace(0, 1, numquadpoints)
     
     data = jnp.outer(dofs[:, 0], jnp.ones(numquadpoints))
     
