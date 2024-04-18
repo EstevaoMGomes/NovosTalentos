@@ -1,3 +1,5 @@
+import jax
+jax.config.update("jax_enable_x64", True)
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
 from jax.lax import fori_loop
@@ -56,6 +58,8 @@ FourierCoefficients = jnp.reshape(jnp.array(eval(line4)), (ncoils, 3, -1))
 ##################################################################################################################################
 ##################################################################################################################################
 
+#from src.InitialConditions import CreateEquallySpacedCurves
+#FourierCoefficients = CreateEquallySpacedCurves(ncoils, 3, R, r)
 plot3D(FourierCoefficients)
 
 InitialValues = initial_conditions(N_particles, "torus", R, loss_r)
@@ -63,7 +67,7 @@ vperp = InitialValues[4]
 
 curves_points = jnp.empty((ncoils, N_CurvePoints, 3))
 
-def fori_createcoil(coil: jnp.int32, curves_points: jnp.ndarray) -> jnp.ndarray:
+def fori_createcoil(coil: int, curves_points: jnp.ndarray) -> jnp.ndarray:
     return curves_points.at[coil].set(CreateCoil(FourierCoefficients[coil], N_CurvePoints))
 
 curves_points = fori_loop(0, ncoils, fori_createcoil, curves_points)
@@ -78,5 +82,14 @@ times = jnp.linspace(0, maxtime, timesteps)
 def trace_trajectory(particle: int, trajectories: jnp.ndarray) -> jnp.ndarray:
     return trajectories.at[particle,:,:].set(odeint(GuidingCenter, jnp.transpose(InitialValues[:4])[particle], times, currents, curves_points, μ[particle], atol=1e-8, rtol=1e-8, mxstep=100))
 trajectories = fori_loop(0, N_particles, trace_trajectory, trajectories)
-
+print(trajectories.shape)
+print("loss:",
+    jnp.mean(
+        jnp.square(
+            jnp.sqrt(
+                trajectories[:, :, 0]**2 + trajectories[:, :, 1]**2
+            )-R
+        )+trajectories[:, :, 2]**2
+    )/loss_r**2
+)
 plot3D(FourierCoefficients, trajectories)

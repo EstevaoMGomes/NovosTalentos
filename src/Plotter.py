@@ -17,7 +17,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
         trace_curve[i] = go.Scatter3d(x=coil[:,0],y=coil[:,1],z=coil[:,2], mode='lines', name=f'Coil {i+1}', line=dict(color='rgb(179,179,179)', width=4))
 
     # Create layout for the plot
-    layout = go.Layout(scene=dict(aspectmode='cube'))
+    layout = go.Layout(scene=dict(aspectmode = "data"))
 
     # Create figure and add traces to it
     fig = go.Figure(data=list(trace_curve), layout=layout)
@@ -33,7 +33,7 @@ def plot3D(dofs: jnp.ndarray, Trajectories: jnp.ndarray = jnp.zeros(0)):
         yaxis=dict(title='y'),
         zaxis=dict(title='z')
     ))
-    #fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
+    fig.update_scenes(xaxis_visible=False, yaxis_visible=False,zaxis_visible=False )
 
     # Show the plot
     fig.show()

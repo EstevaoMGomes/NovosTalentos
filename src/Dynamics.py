@@ -4,18 +4,18 @@ from src.MagneticField import B, grad_B
 
 @jit
 def GuidingCenter(InitialValues: jnp.ndarray,
-                  t:             jnp.float32,
+                  t:             float,
                   currents:      jnp.ndarray,
                   curve_points:  jnp.ndarray,
-                  μ:             jnp.float32) -> jnp.ndarray:
+                  μ:             float) -> jnp.ndarray:
     
     """ Calculates the motion derivatives with the Guiding Center aproximation
         Attributes:
     InitialValues: jnp.ndarray: Point in phase space where we want to calculate the derivatives - shape (4,)
-    t: jnp.float32: Time when the derivative is calculated
+    t: float: Time when the derivative is calculated
     currents: jnp.ndarray: Currents of the coils - shape (Ncoils,)
     curve_points: jnp.ndarray: Points of the coils - shape (Ncoils, Npoints, 3)
-    μ: jnp.float32: Magnetic moment, the 1st adiabatic constant
+    μ: float: Magnetic moment, the 1st adiabatic constant
         Returns:
     Dx, Dvpar: jnp.ndarray: Derivatives of position and parallel velocity at time t due to the given coils
     """
