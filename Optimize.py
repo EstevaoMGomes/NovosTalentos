@@ -44,7 +44,6 @@ def loss(FourierCoefficients: jnp.ndarray,
     FourierCoefficients = jnp.reshape(FourierCoefficients, (N_coils, 3, -1))
 
     m = 4*1.660538921e-27
-    q = 2*1.602176565e-19
 
     InitialValues = initial_conditions(N_particles, "torus", R, loss_r)
     #InitialValues = initial_conditions(N_particles, "cylinder", 1.0, 0.5)
@@ -94,7 +93,7 @@ def loss(FourierCoefficients: jnp.ndarray,
     #    return 3.5*jnp.exp(-2*𝜏/timesteps)*jnp.exp(-jnp.min(jnp.array(0,jnp.mean(is_lost)))/loss_r**2)
     #return jnp.sum(jnp.apply_along_axis(loss_calc, 1, is_lost))
 
-    return jnp.mean(distances_squared/loss_r**2)
+    return jnp.mean(distances_squared)/loss_r**2
     #return jnp.mean(3.5*jnp.exp(-2*loss_r/jnp.sqrt(distances_squared)))
 
 """
@@ -113,16 +112,16 @@ for i in range(len(Fourier)):
 FourierCoefficients = Fourier
 """
 
-N_particles = 10
+N_particles = 50
 N_CurvePoints = 100
 maxtime = 1e-6
 timesteps = 200
 
 ncoils = 10
 order = 3
-R = 1 #5.5
+R = 5.
 r = 0.5
-loss_r = 0.2 #r
+loss_r = 0.2
 FourierCoefficients = jnp.ravel(CreateEquallySpacedCurves(ncoils, order, R, r))
 currents = jnp.ones(ncoils)*1e7
 
@@ -175,5 +174,12 @@ with open("results.txt", "a") as file:
 
 #print(jnp.array_str(minima.x).replace("\n", "").replace(" ", "", 1).replace("  ", ",").replace(" ", ","))
 
+print(jnp.array_str(minima.x))
+print(minima.x)
+print(loss(minima.x, N_particles, ncoils, N_CurvePoints, maxtime, timesteps, R, loss_r, currents))
 
-
+import h5py as h5
+file = h5.File("results.h5", "w")
+#file.create_dataset("FourierCoefficients", data=minima.x)
+file["FourierCoefficients"] = minima.x
+file.close()

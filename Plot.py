@@ -60,6 +60,12 @@ FourierCoefficients = jnp.reshape(jnp.array(eval(line4)), (ncoils, 3, -1))
 
 #from src.InitialConditions import CreateEquallySpacedCurves
 #FourierCoefficients = CreateEquallySpacedCurves(ncoils, 3, R, r)
+#import h5py as h5
+#file = h5.File("results.h5", "r")
+#FourierCoefficients = jnp.reshape(jnp.array(file["FourierCoefficients"][()]), (ncoils, 3, -1))
+#print(file["FourierCoefficients"])
+#file.close()
+
 plot3D(FourierCoefficients)
 
 InitialValues = initial_conditions(N_particles, "torus", R, loss_r)
